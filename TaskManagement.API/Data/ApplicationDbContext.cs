@@ -12,7 +12,7 @@ namespace TaskManagement.API.Data
         {
         }
 
-        //  will add  Task model here later:
-        // public DbSet<Task> Tasks { get; set; } 
+        
+        public DbSet<TaskItem> Tasks { get; set; }
     }
 }

@@ -43,17 +43,17 @@ builder.Services.AddAuthentication(options =>
 
 // Swagger (Provides a UI to test your APIs later, similar to Postman)
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen();
 
 // THIS is the line that builds the app
 var app = builder.Build();
 
 // Configure the HTTP request pipeline (Your Middleware)
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseHttpsRedirection();
 

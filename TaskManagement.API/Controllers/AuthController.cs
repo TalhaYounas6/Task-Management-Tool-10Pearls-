@@ -6,6 +6,8 @@ using System.Security.Claims;
 using System.Text;
 using TaskManagement.API.DTOs;
 using TaskManagement.API.Models;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace TaskManagement.API.Controllers
 {
@@ -15,12 +17,15 @@ namespace TaskManagement.API.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
+       
         // Dependency Injection
-        public AuthController(UserManager<User> userManager, IConfiguration configuration)
+        public AuthController(UserManager<User> userManager, IConfiguration configuration, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _roleManager = roleManager;
         }
 
         // POST: /api/auth/register
@@ -64,33 +69,66 @@ namespace TaskManagement.API.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
 
             // Generate JWT Token
-            var tokenString = GenerateJwtToken(user);
+            var tokenString = await GenerateJwtToken(user);
 
             return Ok(new { token = tokenString, message = "Login successful!" });
         }
 
-        // Helper function to create the JWT 
-        private string GenerateJwtToken(User user)
+        // GET ALL USERS 
+        [HttpGet("users")]
+        public async Task<IActionResult> GetAllUsers()
         {
-            // Get the secret key from appsettings.json
+            var users = await _userManager.Users.Select(u => new { u.Id, u.FullName, u.Email }).ToListAsync();
+            return Ok(users);
+        }
+
+        // MAKE ME AN ADMIN 
+        [HttpPost("make-admin")]
+        public async Task<IActionResult> MakeAdmin([FromBody] string email)
+        {
+            // Check if the "Admin" role exists in the database. If not, create it.
+            if (!await _roleManager.RoleExistsAsync("Admin"))
+            {
+                await _roleManager.CreateAsync(new IdentityRole("Admin"));
+            }
+
+            // Find the user
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return NotFound("User not found.");
+
+            // Assign the Admin role
+            await _userManager.AddToRoleAsync(user, "Admin");
+
+            return Ok(new { message = $"{user.Email} is now an Admin!" });
+        }
+
+        // Helper function to create the JWT 
+        private async Task<string> GenerateJwtToken(User user)
+        {
             var jwtKey = _configuration["Jwt:Key"];
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Create the payload (Claims)
-            var claims = new[]
+            // Standard Claims
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email!),
                 new Claim("FullName", user.FullName)
             };
 
-            // Baking the token
+            // Fetch user roles from the database and add them to the token!
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(2), // Token valid for 2 hours
+                expires: DateTime.Now.AddHours(2),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

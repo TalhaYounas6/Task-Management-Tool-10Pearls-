@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using TaskManagement.API.DTOs;
 using TaskManagement.API.Models;
-using Microsoft.EntityFrameworkCore;
 
 
 namespace TaskManagement.API.Controllers
@@ -132,6 +133,27 @@ namespace TaskManagement.API.Controllers
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+
+        [HttpGet("me")]
+        [Authorize] // Ensures only logged-in users can call this
+        public async Task<IActionResult> GetMyProfile()
+        {
+            
+            var currentUserId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+
+           
+            var user = await _userManager.FindByIdAsync(currentUserId);
+            if (user == null) return NotFound("User not found.");
+
+            
+            return Ok(new
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email
+            });
         }
     }
 }

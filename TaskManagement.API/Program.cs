@@ -7,6 +7,7 @@ using System.Text;
 using TaskManagement.API.Data;
 using TaskManagement.API.Models;
 using Serilog;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +19,11 @@ builder.Host.UseSerilog((context, configuration) =>
 );
 
 // Add services to the container (This enables Controllers)
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // 1. Add Database connection
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -92,6 +97,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<TaskManagement.API.Middleware.GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 

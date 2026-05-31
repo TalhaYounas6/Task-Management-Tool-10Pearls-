@@ -16,20 +16,25 @@ namespace TaskManagement.API.Models
 
         public DateTime? DueDate { get; set; }
 
+        [Required]
+        public string Status { get; set; } = "Pending";
+
+        [Required]
+        public string Priority { get; set; } = "Medium";
+
+        public TaskCategory? Category { get; set; }
+
         
-        [Required]
-        public string Status { get; set; } = "Pending"; // Pending, InProgress, Completed
-
-        [Required]
-        public string Priority { get; set; } = "Medium"; // Low, Medium, High
-
-        public string? Category { get; set; }
-
-        // FOREIGN KEY: This will link the task to a specific User's ID
-        public string? AssignedUserId { get; set; }
+        public string? CreatorUserId { get; set; }
 
        
+        public string? AssignedUserId { get; set; }
+
         [ForeignKey("AssignedUserId")]
         public User? AssignedUser { get; set; }
+
+        
+        [ForeignKey("CreatorUserId")]
+        public User? CreatorUser { get; set; }
     }
 }

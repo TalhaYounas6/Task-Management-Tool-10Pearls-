@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using TaskManagement.API.Models;
 
 namespace TaskManagement.API.DTOs
 {
@@ -14,7 +15,7 @@ namespace TaskManagement.API.DTOs
 
         public string Priority { get; set; } = "Medium";
 
-        public string? Category { get; set; }
+        public TaskCategory? Category { get; set; }
 
         // Optional: An admin can assign this to someone else. 
         // If left blank, it will just assign the task to the person creating it.

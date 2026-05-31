@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagement.API.Data;
 
@@ -11,13 +12,15 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260522123752_UpdateCategoryToEnum")]
+    partial class UpdateCategoryToEnum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -169,9 +172,6 @@ namespace TaskManagement.API.Migrations
                     b.Property<int?>("Category")
                         .HasColumnType("int");
 
-                    b.Property<string>("CreatorUserId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -194,8 +194,6 @@ namespace TaskManagement.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedUserId");
-
-                    b.HasIndex("CreatorUserId");
 
                     b.ToTable("Tasks");
                 });
@@ -326,13 +324,7 @@ namespace TaskManagement.API.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedUserId");
 
-                    b.HasOne("TaskManagement.API.Models.User", "CreatorUser")
-                        .WithMany()
-                        .HasForeignKey("CreatorUserId");
-
                     b.Navigation("AssignedUser");
-
-                    b.Navigation("CreatorUser");
                 });
 #pragma warning restore 612, 618
         }

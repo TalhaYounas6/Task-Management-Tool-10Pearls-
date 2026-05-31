@@ -28,6 +28,7 @@ namespace TaskManagement.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllTasks()
         {
+        
             // Extract the ID of whoever just called the API
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -113,59 +114,54 @@ namespace TaskManagement.API.Controllers
 
         // POST: api/tasks
         [HttpPost]
-        [Authorize(Roles = "Admin")] // Only admin can create task
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto dto)
         {
-            // Get the ID of the person making the request
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = User.IsInRole("Admin");
 
-            // Map the DTO to our actual Database Model
-            var newTask = new TaskItem
+            var task = new TaskItem
             {
                 Title = dto.Title,
                 Description = dto.Description,
                 DueDate = dto.DueDate,
                 Priority = dto.Priority,
                 Category = dto.Category,
-                Status = "Pending", // Every new task starts as Pending
-
-                // If the frontend didn't send an AssignedUserId, assign it to the logged-in user
-                AssignedUserId = string.IsNullOrEmpty(dto.AssignedUserId) ? currentUserId : dto.AssignedUserId
+                CreatorUserId = currentUserId,
+                // If Admin use the DTO. If User then their own ID 
+                AssignedUserId = isAdmin ? dto.AssignedUserId : currentUserId,
+                Status = "Pending"
             };
 
-            // Add to database and save
-            _context.Tasks.Add(newTask);
+            _context.Tasks.Add(task);
             await _context.SaveChangesAsync();
 
-            // Record the event in the server logs
-            _logger.LogInformation("A new task titled '{TaskTitle}' was created by User ID: {UserId}", newTask.Title, currentUserId);
+            _logger.LogInformation("A new task titled '{TaskTitle}' was created.", task.Title);
 
-            return Ok(new { message = "Task created successfully!", task = newTask });
+            return Ok(new { message = "Task created successfully!", task });
         }
 
 
 
         // DELETE: api/tasks/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")] // Only admin can delete a task
+        // Removed [Authorize(Roles = "Admin")] so regular users can trigger this method
         public async Task<IActionResult> DeleteTask(int id)
         {
-            // Find a task with this specific ID
-            var task = await _context.Tasks.FindAsync(id);
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = User.IsInRole("Admin");
 
-            // If the task doesn't exist, return a 404 error
-            if (task == null)
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null) return NotFound(new { message = "Task not found." });
+
+            // Block if they are not an Admin and they don't own the task
+            if (!isAdmin && task.AssignedUserId != currentUserId)
             {
-                return NotFound(new { message = "Task not found." });
+                return Forbid();
             }
 
-            // task for deletion
             _context.Tasks.Remove(task);
-
-            // execute the deletion in SQL Server
             await _context.SaveChangesAsync();
 
-            //Return a success message to the frontend
             return Ok(new { message = $"Task {id} was permanently deleted." });
         }
 
@@ -181,32 +177,35 @@ namespace TaskManagement.API.Controllers
             var task = await _context.Tasks.FindAsync(id);
             if (task == null) return NotFound(new { message = "Task not found." });
 
-            // If it's a regular user, check if they  own this task
+            // If it's a regular user, check if they own this task
             if (!isAdmin && task.AssignedUserId != currentUserId)
             {
                 return Forbid(); // 403 Forbidden: You cannot edit someone else's task
             }
 
-            // Apply changes according to role
+            // Apply Changes
 
-            // Admins are allowed to update ANY field
-            if (isAdmin)
+            // Only Admins can reassign a task to someone else
+            if (isAdmin && dto.AssignedUserId != null)
             {
-                if (dto.Title != null) task.Title = dto.Title;
-                if (dto.Description != null) task.Description = dto.Description;
-                if (dto.DueDate != null) task.DueDate = dto.DueDate;
-                if (dto.Priority != null) task.Priority = dto.Priority;
-                if (dto.Category != null) task.Category = dto.Category;
-                if (dto.AssignedUserId != null) task.AssignedUserId = dto.AssignedUserId;
+                task.AssignedUserId = dto.AssignedUserId;
             }
 
-            // both Admins and Regular Users are allowed to update the Status
+            // Because of the Forbid() check above, if a regular user makes it 
+            // to this line, it is guaranteed to be their task. So they can update these details
+            if (dto.Title != null) task.Title = dto.Title;
+            if (dto.Description != null) task.Description = dto.Description;
+            if (dto.DueDate != null) task.DueDate = dto.DueDate;
             if (dto.Status != null) task.Status = dto.Status;
+            if (dto.Priority != null) task.Priority = dto.Priority;
+            if (dto.Category != null) task.Category = dto.Category; 
 
             // Save changes to SQL Server
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Task updated successfully!", task });
         }
+
+
     }
 }

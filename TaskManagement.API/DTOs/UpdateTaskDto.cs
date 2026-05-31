@@ -1,4 +1,5 @@
 ﻿using System;
+using TaskManagement.API.Models;
 
 namespace TaskManagement.API.DTOs
 {
@@ -10,7 +11,7 @@ namespace TaskManagement.API.DTOs
         public DateTime? DueDate { get; set; }
         public string? Status { get; set; }
         public string? Priority { get; set; }
-        public string? Category { get; set; }
+        public TaskCategory? Category { get; set; }
         public string? AssignedUserId { get; set; }
     }
 }

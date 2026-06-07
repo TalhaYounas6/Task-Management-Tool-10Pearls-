@@ -22,6 +22,8 @@ First, clone the repository to your local machine and navigate into the root pro
 git clone [https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git](https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git)
 cd Task-Management-Tool-10Pearls-
 
+```
+
 ## Backend Setup (.NET API)
 
 The backend is configured to automatically restore all required NuGet packages (like Entity Framework, Serilog, and DotNetEnv) the first time you run or build the project.
@@ -39,7 +41,7 @@ cd TaskManagement.API
 
 1. Open `appsettings.json` (located inside the `TaskManagement.API` folder).
 2. Locate the `ConnectionStrings` section.
-3. Update the `DefaultConnection` string to point to your local SQL Server instance. 
+3. Update the `DefaultConnection` string to point to your local SQL Server instance.
 
 ### 3. Environment Variables (Security)
 
@@ -48,6 +50,7 @@ This API uses `.env` files to securely manage the JWT signing keys outside of so
 1. Ensure your terminal is still inside the `TaskManagement.API` folder.
 2. Create a new file named exactly `.env`.
 3. Add the following line, replacing the placeholder with a secure string of your choice (at least 256 bits/32 characters long):
+
 ```env
 JWT_KEY=your-super-secure-secret-key-goes-here!
 
@@ -125,3 +128,7 @@ To test the role-based access control (RBAC) and administrative features, you ca
 * **Static Analysis:** Fully scanned and verified using SonarQube/SonarCloud.
 * **Logging:** Integrated Serilog for rolling file and console logs.
 * **API Documentation:** Fully interactive Swagger UI implementation with Bearer Token support.
+
+```
+
+```

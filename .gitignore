@@ -3,6 +3,11 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+
+# SonarQube / SonarCloud Scanner files
+.sonarqube/
+**/.scannerwork/
+
 # dotenv files
 .env
 

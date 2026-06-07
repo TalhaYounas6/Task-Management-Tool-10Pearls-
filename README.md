@@ -19,7 +19,7 @@ To run this application locally, you will need the following installed on your m
 First, clone the repository to your local machine and navigate into the root project directory:
 
 ```bash
-git clone [https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git](https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git)
+git clone https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git
 cd Task-Management-Tool-10Pearls-
 
 ```

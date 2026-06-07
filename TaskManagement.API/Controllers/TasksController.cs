@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Serilog.Core;
 using System.Security.Claims;
 using TaskManagement.API.Data;
 using TaskManagement.API.DTOs;
@@ -9,7 +8,7 @@ using TaskManagement.API.Models;
 
 namespace TaskManagement.API.Controllers
 {
-    [Authorize] // SECURITY: This locks down the entire controller. No JWT = No Access.
+    [Authorize] 
     [Route("api/[controller]")]
     [ApiController]
     public class TasksController : ControllerBase
@@ -17,7 +16,6 @@ namespace TaskManagement.API.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TasksController> _logger;
 
-        // Dependency Injection: database context
         public TasksController(ApplicationDbContext context, ILogger<TasksController> logger)
         {
             _context = context;
@@ -28,16 +26,13 @@ namespace TaskManagement.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllTasks()
         {
-        
-            // Extract the ID of whoever just called the API
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // Scenario A: The user is an Admin
             if (User.IsInRole("Admin"))
             {
-                // Fetch all tasks
                 var allTasks = await _context.Tasks
-                    .Include(t => t.AssignedUser) // Grab the linked user row
+                    .Include(t => t.AssignedUser)
                     .Select(t => new
                     {
                         t.Id,
@@ -47,8 +42,9 @@ namespace TaskManagement.API.Controllers
                         t.Status,
                         t.Priority,
                         t.Category,
-                        // If there's a user, send their email. Otherwise, say "Unassigned"
-                        AssignedTo = t.AssignedUser != null ? t.AssignedUser.Email : "Unassigned"
+                        CreatorUserId = t.CreatorUserId,
+                        AssignedUserId = t.AssignedUserId,
+                        AssignedUserName = t.AssignedUser != null ? t.AssignedUser.FullName : null
                     })
                     .ToListAsync();
 
@@ -56,9 +52,9 @@ namespace TaskManagement.API.Controllers
             }
 
             // Scenario B: A regular user
-            // Only fetch tasks where the ID matches their token
             var myTasks = await _context.Tasks
-                .Where(t => t.AssignedUserId == currentUserId)
+                .Include(t => t.AssignedUser)
+                .Where(t => t.AssignedUserId == currentUserId || t.CreatorUserId == currentUserId) 
                 .Select(t => new
                 {
                     t.Id,
@@ -68,7 +64,9 @@ namespace TaskManagement.API.Controllers
                     t.Status,
                     t.Priority,
                     t.Category,
-                    AssignedTo = "Me" //  only see their own tasks
+                    CreatorUserId = t.CreatorUserId, 
+                    AssignedUserId = t.AssignedUserId,
+                    AssignedUserName = t.AssignedUser != null ? t.AssignedUser.FullName : null
                 })
                 .ToListAsync();
 
@@ -82,21 +80,18 @@ namespace TaskManagement.API.Controllers
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("Admin");
 
-            // Find the task and include the User data
             var task = await _context.Tasks
                 .Include(t => t.AssignedUser)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
-            // If it doesn't exist, return 404
             if (task == null) return NotFound(new { message = "Task not found." });
 
-            //If it's a regular user, check if they own this task
-            if (!isAdmin && task.AssignedUserId != currentUserId)
+            // Ensure they are Admin, the Creator, or the Assigned User
+            if (!isAdmin && task.AssignedUserId != currentUserId && task.CreatorUserId != currentUserId)
             {
-                return Forbid(); // 403 Forbidden:  cannot view someone else's task
+                return Forbid();
             }
 
-            
             var result = new
             {
                 task.Id,
@@ -106,7 +101,9 @@ namespace TaskManagement.API.Controllers
                 task.Status,
                 task.Priority,
                 task.Category,
-                AssignedTo = task.AssignedUser != null ? task.AssignedUser.Email : "Unassigned"
+                CreatorUserId = task.CreatorUserId, 
+                AssignedUserId = task.AssignedUserId,
+                AssignedUserName = task.AssignedUser != null ? task.AssignedUser.FullName : null
             };
 
             return Ok(result);
@@ -127,7 +124,6 @@ namespace TaskManagement.API.Controllers
                 Priority = dto.Priority,
                 Category = dto.Category,
                 CreatorUserId = currentUserId,
-                // If Admin use the DTO. If User then their own ID 
                 AssignedUserId = isAdmin ? dto.AssignedUserId : currentUserId,
                 Status = "Pending"
             };
@@ -140,11 +136,8 @@ namespace TaskManagement.API.Controllers
             return Ok(new { message = "Task created successfully!", task });
         }
 
-
-
         // DELETE: api/tasks/{id}
         [HttpDelete("{id}")]
-        // Removed [Authorize(Roles = "Admin")] so regular users can trigger this method
         public async Task<IActionResult> DeleteTask(int id)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -153,8 +146,11 @@ namespace TaskManagement.API.Controllers
             var task = await _context.Tasks.FindAsync(id);
             if (task == null) return NotFound(new { message = "Task not found." });
 
-            // Block if they are not an Admin and they don't own the task
-            if (!isAdmin && task.AssignedUserId != currentUserId)
+            bool isCreator = task.CreatorUserId == currentUserId;
+
+            // Block if they are not an Admin AND they didn't create the task. 
+            // (Assigned users cannot delete tasks)
+            if (!isAdmin && !isCreator)
             {
                 return Forbid();
             }
@@ -169,43 +165,43 @@ namespace TaskManagement.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTask(int id, [FromBody] UpdateTaskDto dto)
         {
-            // Check the user and their role
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("Admin");
 
-            // Find the task
             var task = await _context.Tasks.FindAsync(id);
             if (task == null) return NotFound(new { message = "Task not found." });
 
-            // If it's a regular user, check if they own this task
-            if (!isAdmin && task.AssignedUserId != currentUserId)
+            bool isCreator = task.CreatorUserId == currentUserId;
+            bool isAssigned = task.AssignedUserId == currentUserId;
+
+          
+            if (!isAdmin && !isCreator && !isAssigned)
             {
-                return Forbid(); // 403 Forbidden: You cannot edit someone else's task
+                return Forbid();
             }
 
-            // Apply Changes
+           
+            if (dto.Status != null) task.Status = dto.Status;
 
-            // Only Admins can reassign a task to someone else
+         
+            if (isAdmin || isCreator)
+            {
+                if (dto.Title != null) task.Title = dto.Title;
+                if (dto.Description != null) task.Description = dto.Description;
+                if (dto.DueDate != null) task.DueDate = dto.DueDate;
+                if (dto.Priority != null) task.Priority = dto.Priority;
+                if (dto.Category != null) task.Category = dto.Category;
+            }
+
+            
             if (isAdmin && dto.AssignedUserId != null)
             {
                 task.AssignedUserId = dto.AssignedUserId;
             }
 
-            // Because of the Forbid() check above, if a regular user makes it 
-            // to this line, it is guaranteed to be their task. So they can update these details
-            if (dto.Title != null) task.Title = dto.Title;
-            if (dto.Description != null) task.Description = dto.Description;
-            if (dto.DueDate != null) task.DueDate = dto.DueDate;
-            if (dto.Status != null) task.Status = dto.Status;
-            if (dto.Priority != null) task.Priority = dto.Priority;
-            if (dto.Category != null) task.Category = dto.Category; 
-
-            // Save changes to SQL Server
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Task updated successfully!", task });
         }
-
-
     }
 }

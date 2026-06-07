@@ -44,16 +44,10 @@ export default function Dashboard() {
     );
   }
 
-  
-  // If the user is a regular user only count their tasks. If Admin count all tasks.
-  const relevantTasks = role === 'Admin' 
-    ? tasks 
-    : tasks.filter(t => t.assignedUserId === userId);
-
-  const totalTasks = relevantTasks.length;
-  const completedTasks = relevantTasks.filter(t => t.status === 'Completed').length;
-  const pendingTasks = relevantTasks.filter(t => t.status === 'Pending').length;
-  const inProgressTasks = relevantTasks.filter(t => t.status === 'In Progress').length;
+const totalTasks = tasks.length;
+const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+const pendingTasks = tasks.filter(t => t.status === 'Pending').length;
+const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
 
   return (
     <div className="space-y-6">

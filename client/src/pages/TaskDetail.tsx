@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../store/store';
 import { tasksService, type TaskItem } from '../api/taskApi';
 import StatusBadge from '../components/StatusBadge';
 
 export default function TaskDetail() {
-
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const { role, userId } = useSelector((state: RootState) => state.auth);
 
   const [task, setTask] = useState<TaskItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,7 +19,6 @@ export default function TaskDetail() {
     const fetchSingleTask = async () => {
       try {
         if (!id) return;
-       
         const data = await tasksService.getTaskById(Number(id));
         setTask(data);
       } catch (err) {
@@ -43,6 +45,17 @@ export default function TaskDetail() {
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading task details...</div>;
   if (error || !task) return <div className="p-4 bg-red-50 text-red-700 border border-red-200">{error}</div>;
 
+  //  UI PERMISSION LOGIC 
+  const isAdmin = role === 'Admin';
+  const isCreator = task.creatorUserId === userId;
+  const isAssigned = task.assignedUserId === userId;
+
+  // A restricted assignee is someone who is assigned the task, but didn't create it, and isn't an Admin.
+  const isRestrictedAssignee = isAssigned && !isCreator && !isAdmin;
+
+  const canEdit = isAdmin || isCreator || isAssigned; 
+  const canDelete = isAdmin || isCreator; 
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       
@@ -50,6 +63,13 @@ export default function TaskDetail() {
       <Link to="/tasks" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
         &larr; Back to Task Directory
       </Link>
+
+      {/* heads up about their permissions */}
+      {isRestrictedAssignee && (
+        <div className="p-4 bg-blue-50 text-blue-800 border border-blue-200 text-sm shadow-sm">
+          <strong>Note:</strong> You are the assignee for this task. You have permission to update its status to keep the team informed.
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 p-6 sm:p-8 shadow-sm">
         
@@ -80,9 +100,8 @@ export default function TaskDetail() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500 mb-1">Assigned To</p>
-            {/* Later fetch the user's real name instead of showing ID */}
             <p className="text-gray-900 truncate" title={task.assignedUserId}>
-              {task.assignedUserId ? 'Assigned (View ID)' : 'Unassigned'}
+              {task.assignedUserName ? task.assignedUserName : 'Unassigned'}
             </p>
           </div>
         </div>
@@ -96,20 +115,27 @@ export default function TaskDetail() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-6 border-t border-gray-200">
-          <Link 
-            to={`/tasks/${task.id}/edit`}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            Edit Task
-          </Link>
-          <button 
-            onClick={handleDelete}
-            className="bg-white border border-red-300 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition-colors ml-auto"
-          >
-            Delete
-          </button>
-        </div>
+        {(canEdit || canDelete) && (
+          <div className="flex gap-3 pt-6 border-t border-gray-200">
+            {canEdit && (
+              <Link 
+                to={`/tasks/${task.id}/edit`}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                {/* DYNAMIC BUTTON TEXT */}
+                {isRestrictedAssignee ? 'Update Status' : 'Edit Task'}
+              </Link>
+            )}
+            {canDelete && (
+              <button 
+                onClick={handleDelete}
+                className="bg-white border border-red-300 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 transition-colors ml-auto"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

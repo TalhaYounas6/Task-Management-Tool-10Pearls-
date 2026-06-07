@@ -13,6 +13,7 @@ export interface TaskItem {
   priority: string; 
   category?: string;
   assignedUserId?: string;
+  assignedUserName?: string;
   creatorUserId?: string;
 }
 

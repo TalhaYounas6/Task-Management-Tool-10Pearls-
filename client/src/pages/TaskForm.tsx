@@ -32,6 +32,7 @@ export default function TaskForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Only fetch the full user list if they are an Admin to save bandwidth & prevent 403 errors
         if (role === 'Admin') {
           const users = await usersService.getAllUsers();
           setUsersList(users);
@@ -45,7 +46,6 @@ export default function TaskForm() {
           if (taskData.category) setCategory(taskData.category);
           setStatus(taskData.status);
           if (taskData.assignedUserId) setAssignedUserId(taskData.assignedUserId);
-          
           
           if (taskData.creatorUserId) setCreatorUserId(taskData.creatorUserId);
           
@@ -101,10 +101,8 @@ export default function TaskForm() {
 
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading form...</div>;
 
-  
-  // Lock the form if it is an edit and they are not an admin and they did not create it.
+  // Lock the form if it is an edit, they are not an admin, AND they did not create it.
   const isRestrictedAssignee = isEditMode && role !== 'Admin' && creatorUserId !== userId;
-  
   
   const inputStyles = `w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 ${isRestrictedAssignee ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}`;
 
@@ -199,10 +197,10 @@ export default function TaskForm() {
             />
           </div>
 
-          
           {isEditMode && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              {/*  this select doesn't use inputStyles so it stays editable for restricted assignees! */}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -215,27 +213,44 @@ export default function TaskForm() {
             </div>
           )}
 
-          {/* ASSIGNMENT DROPDOWN ADMIN ONLY */}
-          {role === 'Admin' && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assign Task To</label>
-              <select
-                value={assignedUserId}
-                onChange={(e) => setAssignedUserId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white"
-              >
-                <option value="">Assign to myself</option>
-                {usersList.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName} ({user.email})
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Leave blank to automatically assign the task to yourself.
-              </p>
-            </div>
-          )}
+          {/* DYNAMIC ASSIGNMENT UI */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Task To</label>
+            
+            {role === 'Admin' ? (
+              <>
+                <select
+                  value={assignedUserId}
+                  onChange={(e) => setAssignedUserId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white"
+                >
+                  <option value="">Assign to myself</option>
+                  {usersList.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName} ({user.email})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to automatically assign the task to yourself.
+                </p>
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  disabled
+                  value={isEditMode && assignedUserId !== userId ? "Another User" : "You (Default)"}
+                  className="w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+                {!isEditMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Standard users can only create tasks assigned to themselves.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="pt-4 border-t border-gray-200">

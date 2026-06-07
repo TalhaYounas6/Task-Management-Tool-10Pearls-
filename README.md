@@ -22,11 +22,6 @@ First, clone the repository to your local machine and navigate into the root pro
 git clone [https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git](https://github.com/TalhaYounas6/Task-Management-Tool-10Pearls-.git)
 cd Task-Management-Tool-10Pearls-
 
-```
-
-
----
-
 ## Backend Setup (.NET API)
 
 The backend is configured to automatically restore all required NuGet packages (like Entity Framework, Serilog, and DotNetEnv) the first time you run or build the project.
@@ -130,7 +125,3 @@ To test the role-based access control (RBAC) and administrative features, you ca
 * **Static Analysis:** Fully scanned and verified using SonarQube/SonarCloud.
 * **Logging:** Integrated Serilog for rolling file and console logs.
 * **API Documentation:** Fully interactive Swagger UI implementation with Bearer Token support.
-
-```
-
-```

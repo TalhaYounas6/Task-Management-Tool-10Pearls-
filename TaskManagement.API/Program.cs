@@ -8,8 +8,14 @@ using TaskManagement.API.Data;
 using TaskManagement.API.Models;
 using Serilog;
 using System.Text.Json.Serialization;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+builder.Configuration.AddEnvironmentVariables();
 
 // Configure Serilog
 builder.Host.UseSerilog((context, configuration) =>

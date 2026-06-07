@@ -106,8 +106,14 @@ namespace TaskManagement.API.Controllers
         // Helper function to create the JWT 
         private async Task<string> GenerateJwtToken(User user)
         {
-            var jwtKey = _configuration["Jwt:Key"];
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!));
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new InvalidOperationException("Server configuration error: Missing JWT Key in Environment Variables.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             // Standard Claims
